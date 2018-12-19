@@ -6,4 +6,4 @@ if [ "$1" == '-s' ]; then
   SERVERS=$1
   shift
 fi
-pssh -o logs -e elogs -H "$SERVERS" "$*"
+pssh -x -t -p 15 -o logs -e elogs -H "$SERVERS" "$*"

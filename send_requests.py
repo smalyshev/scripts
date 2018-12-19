@@ -7,34 +7,32 @@ import compare
 from pebble import ThreadPool
 import random
 
-SERVERS = [ 'wdq5', 'wdq4', 'wdq6', 
-            'wdq21', 'wdq22', 'wdq23',
-            'wdq3', 'wdq7', 'wdq8',
-            'wdq24', 'wdq25', 'wdq26',
-            'wdq9', 'wdq10'
-        ]
-
+PRODUCTION = [ 'wdq5', 'wdq4', 'wdq6', 'wdq21', 'wdq22', 'wdq23' ] 
+INTERNAL = [ 'wdq3', 'wdq7', 'wdq8', 'wdq24', 'wdq25', 'wdq26' ]
+TEST = ['wdq9', 'wdq10']
+SERVERS = PRODUCTION + INTERNAL + TEST
 PROGRESS = True
 DEBUG = False
 
 def query(sparql, server, timeout=None):
-    cmd = """
-curl -s -XPOST localhost:9999/bigdata/namespace/wdq/sparql --data-binary 'query={0}' -H 'Accept: application/sparql-results+json'
-"""
-    cmd = cmd.format(sparql).strip()
+    cmd = f"curl -s -XPOST localhost:9999/bigdata/namespace/wdq/sparql --data-binary 'query={sparql}' -H 'Accept: application/sparql-results+json'"
     try:
         with open(os.devnull, 'w') as devnull:
             res = subprocess.check_output(["ssh", server, cmd], shell = False, stderr = devnull, timeout=timeout)
     except subprocess.TimeoutExpired:
         if PROGRESS:
             print(server + " timed out!") 
-            return []
+        return []
     if DEBUG:
         print(res)
-    data = json.loads(res.decode('utf-8'))
+    try:
+        data = json.loads(res.decode('utf-8'))
+    except json.decoder.JSONDecodeError:
+        print(res)
+        return []
     bindings = [x for x in data['results']['bindings'] if x != {}]
     if PROGRESS: 
-        print(server + " Done") 
+        print(f"{server} Done") 
     return bindings
     
 def query_server_data(sparql, server, parser):
@@ -50,5 +48,5 @@ def query_all(sparql, data_parser=json_encode, servers=SERVERS):
     resmap = pool.map(lambda server: query_server_data(sparql, server, data_parser), servers)
     return resmap.result()
 
-def random_server():
-    return random.choice(SERVERS)
+def random_server(servers=SERVERS):
+    return random.choice(servers)
